@@ -309,10 +309,18 @@ async def update_task(
 
     try:
         client = TickTickClientSingleton.get_client()
+        # Get the existing full task object
         task_obj = client.get_by_id(task_id)
-        task_obj.update(task_object)
+        if not task_obj or not isinstance(task_obj, dict):
+            return format_response({"error": f"Task with ID {task_id} not found or invalid.", "status": "not_found"})
 
-        updated_task = client.task.update(task_object.model_dump(mode='json'))
+        # Merge the updates into the existing task object
+        # Only update fields that are not None in the incoming task_object
+        updates = task_object.model_dump(exclude_none=True, mode='json')
+        task_obj.update(updates)
+
+        # Send the FULL task object to the API
+        updated_task = client.task.update(task_obj)
         logging.info(f"Successfully updated task ID: {task_id}")
         return format_response(updated_task)
     except Exception as e:
